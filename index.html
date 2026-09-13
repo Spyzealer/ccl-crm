@@ -863,7 +863,42 @@ td.actions { text-align: right; white-space: nowrap; }
 </style>
 </head>
 <body>
-<div class="app" data-theme="auto">
+<!-- LOGIN GATE — blocks all app content until authenticated -->
+<div id="login-gate" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f172a,#1e293b);font-family:inherit;">
+  <div style="width:100%;max-width:380px;padding:32px;background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.35);">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="width:56px;height:56px;border-radius:14px;background:#1F4E78;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;margin:0 auto 12px;">CCL</div>
+      <h2 style="margin:0;font-size:20px;">CCL CRM</h2>
+      <div style="color:#64748b;font-size:13px;margin-top:4px;">เข้าสู่ระบบเพื่อดูข้อมูลลูกค้า</div>
+    </div>
+    <div id="login-form">
+      <div class="field" style="margin-bottom:12px;">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">ชื่อผู้ใช้</label>
+        <input id="login-username" autocomplete="username" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box;" placeholder="เช่น Nic">
+      </div>
+      <div class="field" style="margin-bottom:8px;">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">รหัสผ่าน</label>
+        <input id="login-password" type="password" autocomplete="current-password" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box;" placeholder="••••••••">
+      </div>
+      <div id="login-error" style="color:#C62828;font-size:13px;min-height:18px;margin-bottom:8px;"></div>
+      <button id="login-submit-btn" style="width:100%;padding:11px;background:#1F4E78;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">เข้าสู่ระบบ</button>
+    </div>
+    <div id="change-password-form" style="display:none;">
+      <div style="font-size:13px;color:#334155;margin-bottom:12px;padding:10px;background:#fef9c3;border-radius:8px;">🔒 กรุณาตั้งรหัสผ่านใหม่ก่อนใช้งาน (ครั้งแรกที่เข้าสู่ระบบ)</div>
+      <div class="field" style="margin-bottom:12px;">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)</label>
+        <input id="new-password-1" type="password" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box;" placeholder="••••••••">
+      </div>
+      <div class="field" style="margin-bottom:8px;">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">ยืนยันรหัสผ่านใหม่</label>
+        <input id="new-password-2" type="password" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box;" placeholder="••••••••">
+      </div>
+      <div id="change-password-error" style="color:#C62828;font-size:13px;min-height:18px;margin-bottom:8px;"></div>
+      <button id="change-password-btn" style="width:100%;padding:11px;background:#1F4E78;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">ตั้งรหัสผ่านใหม่</button>
+    </div>
+  </div>
+</div>
+<div class="app" data-theme="auto" style="display:none" id="app-root">
   <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
     <div class="sb-brand">
@@ -905,6 +940,8 @@ td.actions { text-align: right; white-space: nowrap; }
       </nav>
       <span class="today-chip" id="today-chip">—</span>
       <span class="today-chip" id="sync-pill" title="สถานะการซิงค์">📴 Local</span>
+      <span class="today-chip" id="whoami-chip" title="ผู้ใช้ปัจจุบัน" style="cursor:default;"></span>
+      <button class="tb-icon-btn" id="btn-logout" title="ออกจากระบบ"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
       <button class="tb-icon-btn" id="btn-refresh" title="🔄 ดึงข้อมูลล่าสุดจาก Google Sheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
       <button class="tb-icon-btn" id="btn-sync" title="⚙️ ตั้งค่าการซิงค์ออนไลน์"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></button>
       <button class="tb-icon-btn" id="cmd-open" title="ค้นหา (Ctrl+K)"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
@@ -2966,6 +3003,123 @@ function updateTweaksUI() {
 }
 
 // ============================================================
+// AUTH — login gate, session token, change-password flow
+// ============================================================
+const AUTH_KEY = 'ccl_auth_v1';
+const AUTH = (() => {
+  try {
+    const s = localStorage.getItem(AUTH_KEY);
+    if (s) return JSON.parse(s);
+  } catch (e) {}
+  return { token: '', username: '', role: '', expires_at: '' };
+})();
+function saveAuth() { try { localStorage.setItem(AUTH_KEY, JSON.stringify(AUTH)); } catch (e) {} }
+function clearAuth() { AUTH.token = ''; AUTH.username = ''; AUTH.role = ''; AUTH.expires_at = ''; saveAuth(); }
+
+function isAuthValid_() {
+  if (!AUTH.token) return false;
+  if (AUTH.expires_at && new Date(AUTH.expires_at) < new Date()) return false;
+  return true;
+}
+
+function handleAuthExpired_() {
+  clearAuth();
+  showLoginGate_('session_expired');
+}
+
+function showLoginGate_(reason) {
+  const gate = document.getElementById('login-gate');
+  const appRoot = document.getElementById('app-root');
+  if (appRoot) appRoot.style.display = 'none';
+  if (gate) gate.style.display = 'flex';
+  document.getElementById('login-form').style.display = '';
+  document.getElementById('change-password-form').style.display = 'none';
+  const err = document.getElementById('login-error');
+  if (err) err.textContent = reason === 'session_expired' ? 'Session หมดอายุ กรุณา login ใหม่' : '';
+}
+
+function hideLoginGate_() {
+  const gate = document.getElementById('login-gate');
+  const appRoot = document.getElementById('app-root');
+  if (gate) gate.style.display = 'none';
+  if (appRoot) appRoot.style.display = '';
+  const chip = document.getElementById('whoami-chip');
+  if (chip) chip.textContent = `👤 ${AUTH.username}${AUTH.role === 'Admin' ? ' (Admin)' : ''}`;
+}
+
+async function doLogin_() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const err = document.getElementById('login-error');
+  err.textContent = '';
+  if (!username || !password) { err.textContent = 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน'; return; }
+  if (!STORE.syncUrl) { err.textContent = 'ยังไม่ได้ตั้งค่า Sync URL'; return; }
+  const btn = document.getElementById('login-submit-btn');
+  btn.disabled = true; btn.textContent = 'กำลังเข้าสู่ระบบ...';
+  try {
+    const res = await fetch(STORE.syncUrl, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'login', payload: { username, password } }),
+      redirect: 'follow',
+    });
+    const data = await res.json();
+    if (!data || data.error) { err.textContent = (data && data.error) || 'เข้าสู่ระบบไม่สำเร็จ'; return; }
+    AUTH.token = data.token; AUTH.username = data.username; AUTH.role = data.role; AUTH.expires_at = data.expires_at;
+    saveAuth();
+    STORE.syncUser = data.username; saveStore();
+    if (data.must_change_password) {
+      document.getElementById('login-form').style.display = 'none';
+      document.getElementById('change-password-form').style.display = '';
+    } else {
+      hideLoginGate_();
+      init();
+    }
+  } catch (e) {
+    err.textContent = 'เชื่อมต่อไม่สำเร็จ: ' + (e.message || e);
+  } finally {
+    btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ';
+  }
+}
+
+async function doChangePassword_() {
+  const p1 = document.getElementById('new-password-1').value;
+  const p2 = document.getElementById('new-password-2').value;
+  const err = document.getElementById('change-password-error');
+  err.textContent = '';
+  if (p1.length < 8) { err.textContent = 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'; return; }
+  if (p1 !== p2) { err.textContent = 'รหัสผ่านทั้งสองช่องไม่ตรงกัน'; return; }
+  const btn = document.getElementById('change-password-btn');
+  btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+  try {
+    const r = await apiPost('changePassword', { new_password: p1 });
+    if (r && r.error) { err.textContent = r.error; return; }
+    hideLoginGate_();
+    init();
+  } finally {
+    btn.disabled = false; btn.textContent = 'ตั้งรหัสผ่านใหม่';
+  }
+}
+
+function doLogout_() {
+  if (!confirm('ออกจากระบบ?')) return;
+  apiPost('logout', {});
+  clearAuth();
+  location.reload();
+}
+
+function wireAuthUI_() {
+  document.getElementById('login-submit-btn').addEventListener('click', doLogin_);
+  document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin_(); });
+  document.getElementById('login-username').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin_(); });
+  document.getElementById('change-password-btn').addEventListener('click', doChangePassword_);
+  document.getElementById('new-password-2').addEventListener('keydown', e => { if (e.key === 'Enter') doChangePassword_(); });
+  const logoutBtn = document.getElementById('btn-logout');
+  if (logoutBtn) logoutBtn.addEventListener('click', doLogout_);
+}
+
+// ============================================================
 // ONLINE SYNC (Google Sheets via Apps Script)
 // ============================================================
 const SYNC_STATE = { draining: false, pulling: false };
@@ -2978,11 +3132,12 @@ async function apiPost(action, payload) {
       mode: 'cors',
       // text/plain avoids CORS preflight; Apps Script reads e.postData.contents anyway
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action, payload, user: STORE.syncUser || 'anonymous' }),
+      body: JSON.stringify({ action, payload, token: AUTH.token || '' }),
       redirect: 'follow',
     });
     if (!res.ok) return { error: 'HTTP ' + res.status };
     const data = await res.json();
+    if (data && data.auth_required) { handleAuthExpired_(); return { error: data.error || 'ต้อง login ใหม่' }; }
     if (data && data.error) return { error: data.error };
     return data || { ok: true };
   } catch (e) {
@@ -2993,11 +3148,12 @@ async function apiPost(action, payload) {
 async function apiGet(params) {
   if (!STORE.syncUrl) return { skipped: true };
   try {
-    const qs = Object.entries(params || {}).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+    const qs = Object.entries(Object.assign({}, params || {}, { token: AUTH.token || '' })).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
     const sep = STORE.syncUrl.includes('?') ? '&' : '?';
     const res = await fetch(STORE.syncUrl + sep + qs, { method: 'GET', redirect: 'follow' });
     if (!res.ok) return { error: 'HTTP ' + res.status };
     const data = await res.json();
+    if (data && data.auth_required) { handleAuthExpired_(); return { error: data.error || 'ต้อง login ใหม่' }; }
     if (data && data.error) return { error: data.error };
     return data;
   } catch (e) {
@@ -3156,8 +3312,9 @@ function openSyncSettings() {
       <div style="font-size:12px;color:var(--muted);margin-top:4px">วาง URL ที่ได้หลัง Deploy Apps Script (ดูขั้นตอนใน SETUP_GUIDE.md)</div>
     </div>
     <div class="field">
-      <label>ชื่อผู้ใช้ของคุณ (สำหรับบันทึก updated_by)</label>
-      <input id="sync-user" value="${esc(curUser)}" placeholder="เช่น 'นิค' หรือ 'nic@company.com'">
+      <label>ผู้ใช้ที่ login อยู่</label>
+      <input value="${esc(AUTH.username || '')}${AUTH.role ? ' (' + esc(AUTH.role) + ')' : ''}" disabled style="opacity:.7">
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">ชื่อผู้ใช้ถูกกำหนดจากการ login ไม่สามารถแก้ไขที่นี่ได้ — ใช้ปุ่มออกจากระบบที่แถบด้านบนแทน</div>
     </div>
     <div class="field">
       <div id="sync-test-result" style="font-size:13px;margin-top:8px"></div>
@@ -3260,9 +3417,8 @@ async function testSyncConnection() {
 
 async function saveSyncSettings() {
   const url = Q('#sync-url').value.trim();
-  const user = Q('#sync-user').value.trim();
   STORE.syncUrl = url;
-  STORE.syncUser = user || 'anonymous';
+  STORE.syncUser = AUTH.username || 'anonymous';
   saveStore();
   closeModal();
   if (url) {
@@ -3452,7 +3608,18 @@ function init() {
   }
 }
 
-window.addEventListener('DOMContentLoaded', init);
+window.addEventListener('DOMContentLoaded', () => {
+  wireAuthUI_();
+  // Apply bundled DEFAULT_SYNC_URL early so login can reach the backend on first run
+  if (!STORE.syncUrl && DEFAULT_SYNC_URL) { STORE.syncUrl = DEFAULT_SYNC_URL; saveStore(); }
+  if (isAuthValid_()) {
+    hideLoginGate_();
+    init();
+  } else {
+    clearAuth();
+    showLoginGate_();
+  }
+});
 window.openModal = openModal; window.closeModal = closeModal;
 window.openCustomerModal = openCustomerModal; window.saveCustomer = saveCustomer; window.deleteAddedCustomer = deleteAddedCustomer; window.deleteCustomer = deleteCustomer;
 window.openCustomerDetail = openCustomerDetail;
