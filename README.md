@@ -18,6 +18,17 @@ API, not connected to any Git repo). This repo is the new source of truth going 
 Data lives only in the browser's localStorage — not shared across devices/users.
 A real backend (Netlify Functions, Supabase, etc.) is needed for multi-user use.
 
+**Real customer data is publicly viewable, on every environment.** The full
+customer/service/churn dataset (`window.BASE`, 244 customers) is baked
+directly into `index.html`, so anyone who opens the site — production or any
+branch/preview deploy — can see it all via view-source, no login needed.
+Password-protecting preview deploys was attempted and blocked (Netlify Free
+plan doesn't support Visitor Access controls; needs Pro). Production itself
+is exposed regardless, so preview protection is a minor fix anyway — the
+real one is not shipping real customer data in a public static file (e.g.
+serve it from an authenticated endpoint instead of embedding it). Deliberately
+deferred for now — revisit before this handles anything more sensitive.
+
 ## Local development
 Just open `index.html` in a browser, or serve it locally:
 
