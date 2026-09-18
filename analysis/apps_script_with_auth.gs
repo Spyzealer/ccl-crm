@@ -21,6 +21,13 @@
  *   5. Deploy → Manage deployments → Edit (✏️) → Version: New version → Deploy
  *      (สำคัญ: ต้องสร้าง "New version" ทุกครั้งที่แก้โค้ด ไม่งั้นจะยัง serve โค้ดเก่าอยู่)
  *
+ * ทางลัด (ไม่ต้องพึ่งปุ่ม Run ในหน้า editor เลย):
+ *   หลัง deploy แล้ว เปิด URL นี้ในเบราว์เซอร์ครั้งเดียว (แทนข้อ 3-4 ด้านบน):
+ *     <WEB_APP_URL>?action=setup&key=<SETUP_KEY ที่กำหนดไว้ด้านล่าง>
+ *   จะสร้าง sheet Users/Sessions ให้ พร้อมสร้างบัญชี Nic/faii.w และคืนรหัสผ่าน
+ *   ชั่วคราวเป็น JSON ทันทีในเบราว์เซอร์ (ไม่ต้องเปิด Logs ไปหา)
+ *   **เปลี่ยน SETUP_KEY เป็นค่าของตัวเองก่อน deploy จริง แล้วอย่าเผยแพร่ค่านี้**
+ *
  * Endpoints ใหม่/เปลี่ยนแปลง:
  *   POST {action:'login', payload:{username,password}}
  *       -> {ok:true, token, role, username, must_change_password, expires_at}
@@ -60,8 +67,13 @@ const SESSION_DAYS = 30;
 const LOCKOUT_THRESHOLD = 5;
 const LOCKOUT_MINUTES = 15;
 
+// One-time setup key — CHANGE THIS before deploying anywhere, then keep it secret.
+// Used only by ?action=setup, which is disabled automatically after Users sheet exists
+// with at least one row (see setupViaUrl_ below) so it can't be replayed later.
+const SETUP_KEY = 'tjFelQlvY3LoNq66Fviiqh6H1WMQKccj';
+
 // Actions that do NOT require a valid session token
-const PUBLIC_ACTIONS = { ping: true, login: true };
+const PUBLIC_ACTIONS = { ping: true, login: true, setup: true };
 
 // ------------------------------------------------------------
 // HTTP entry points
@@ -70,6 +82,7 @@ function doGet(e) {
   try {
     const action = (e && e.parameter && e.parameter.action) || 'load';
     if (action === 'ping') return json_({ ok: true, server_time: new Date().toISOString() });
+    if (action === 'setup') return json_(setupViaUrl_((e.parameter || {}).key));
 
     const auth = requireAuth_(e.parameter && e.parameter.token);
     if (auth.error) return json_({ error: auth.error, auth_required: true });
@@ -397,6 +410,38 @@ function seedInitialUsers_() {
     const r = adminCreateUser_(s.username, s.role, null);
     Logger.log('Created ' + r.username + ' (' + r.role + ') — TEMP PASSWORD: ' + r.temp_password);
   });
+}
+
+// One-shot setup reachable via GET ?action=setup&key=SETUP_KEY — no need to hunt
+// for a function in the editor's dropdown at all. Runs setupAuthSheets_ +
+// seedInitialUsers_ and returns the temp passwords directly as JSON. Locks itself
+// out automatically once the Users sheet already has rows, so it can't be replayed
+// by someone who finds the URL later.
+function setupViaUrl_(key) {
+  if (!SETUP_KEY || SETUP_KEY.indexOf('CHANGE_ME') === 0) {
+    return { error: 'ยังไม่ได้ตั้งค่า SETUP_KEY ในโค้ด — แก้ค่า SETUP_KEY ก่อน deploy' };
+  }
+  if (String(key || '') !== SETUP_KEY) {
+    return { error: 'key ไม่ถูกต้อง' };
+  }
+  setupAuthSheets_();
+
+  const sh = getUsersSheet_();
+  const alreadySeeded = sh.getLastRow() > 1;
+  if (alreadySeeded) {
+    return { ok: true, already_setup: true, message: 'Users sheet มีบัญชีอยู่แล้ว — ไม่สร้างซ้ำ (ป้องกันการรัน setup ซ้ำ)' };
+  }
+
+  const seeds = [
+    { username: 'Nic', role: 'Admin' },
+    { username: 'faii.w', role: 'Staff' },
+  ];
+  const created = seeds.map(s => adminCreateUser_(s.username, s.role, null));
+  return {
+    ok: true,
+    message: 'สร้าง sheet Users/Sessions + บัญชีเริ่มต้นสำเร็จ — คัดลอกรหัสผ่านชั่วคราวด้านล่างไปให้เจ้าของบัญชีทันที (จะไม่แสดงซ้ำอีก)',
+    users: created.map(u => ({ username: u.username, role: u.role, temp_password: u.temp_password })),
+  };
 }
 
 // ------------------------------------------------------------
