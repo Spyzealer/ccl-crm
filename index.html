@@ -1011,6 +1011,9 @@ td.actions { text-align: right; white-space: nowrap; }
       <section class="page page-hidden" id="page-followups" data-screen-label="Follow-ups"></section>
       <section class="page page-hidden" id="page-groups" data-screen-label="Groups"></section>
       <section class="page page-hidden" id="page-churned" data-screen-label="Churned"></section>
+
+      <!-- User Management (Admin only) -->
+      <section class="page page-hidden" id="page-users" data-screen-label="Users"></section>
     </main>
   </div>
 </div>
@@ -1345,7 +1348,7 @@ function setPage(p) {
   CURRENT = p;
   QQ('#nav .nav-item').forEach(i => i.classList.toggle('active', i.dataset.page === p));
   QQ('.page').forEach(pg => pg.classList.toggle('page-hidden', pg.id !== 'page-' + p));
-  const titles = { dashboard:'ภาพรวม', customers:'ลูกค้า', services:'บริการ', alerts:'วันหมดอายุ', followups:'การติดตาม', groups:'เครือบริษัท', churned:'ลูกค้าหลุด' };
+  const titles = { dashboard:'ภาพรวม', customers:'ลูกค้า', services:'บริการ', alerts:'วันหมดอายุ', followups:'การติดตาม', groups:'เครือบริษัท', churned:'ลูกค้าหลุด', users:'จัดการผู้ใช้' };
   Q('#breadcrumb-cur').textContent = titles[p] || p;
   renderPage(p);
   try { history.replaceState(null, '', '#' + p); } catch(e){}
@@ -1362,6 +1365,7 @@ function renderPage(p) {
   else if (p === 'followups') renderFollowups();
   else if (p === 'groups') renderGroups();
   else if (p === 'churned') renderChurned();
+  else if (p === 'users') renderUsers();
 }
 
 // ============================================================
@@ -3301,6 +3305,136 @@ async function syncRefresh(silent) {
   }
 }
 
+// ============================================================
+// USER MANAGEMENT (Admin only)
+// ============================================================
+let USERS_CACHE = [];
+function usersShell() {
+  return `
+    <div class="page-head">
+      <div><h1>จัดการผู้ใช้</h1><div class="sub">เพิ่ม / ลบ / รีเซ็ตรหัสผ่านของผู้ใช้ในระบบ (Admin เท่านั้น)</div></div>
+      <div class="actions"><button class="btn primary" id="btn-add-user">+ เพิ่มผู้ใช้</button></div>
+    </div>
+    <div class="table-wrap"><div class="table-scroll"><table class="data" id="users-tbl">
+      <thead><tr>
+        <th>ชื่อผู้ใช้</th><th>สิทธิ์</th><th>สถานะ</th><th>สร้างเมื่อ</th><th>แก้ไขล่าสุด</th><th></th>
+      </tr></thead>
+      <tbody id="users-tbody"></tbody>
+    </table></div></div>
+  `;
+}
+
+async function renderUsers() {
+  const page = Q('#page-users');
+  if (!page.dataset.ready) { page.innerHTML = usersShell(); page.dataset.ready = '1'; bindUsers(); }
+  const tbody = Q('#users-tbody');
+  tbody.innerHTML = `<tr><td colspan="6" class="muted" style="padding:20px;text-align:center">กำลังโหลด...</td></tr>`;
+  const r = await apiPost('adminListUsers', {});
+  if (r && r.error) { tbody.innerHTML = `<tr><td colspan="6" style="padding:20px;color:#C62828">${esc(r.error)}</td></tr>`; return; }
+  USERS_CACHE = (r && r.users) || [];
+  renderUsersTable();
+}
+
+function renderUsersTable() {
+  const tbody = Q('#users-tbody');
+  if (!USERS_CACHE.length) { tbody.innerHTML = `<tr><td colspan="6" class="muted" style="padding:20px;text-align:center">ยังไม่มีผู้ใช้</td></tr>`; return; }
+  tbody.innerHTML = USERS_CACHE.map(u => {
+    const now = new Date();
+    const locked = u.locked_until && new Date(u.locked_until) > now;
+    let status = '<span class="badge active"><span class="dot"></span>ปกติ</span>';
+    if (locked) status = '<span class="badge expired"><span class="dot"></span>ถูกล็อก</span>';
+    else if (u.must_change_password) status = '<span class="badge warning"><span class="dot"></span>ต้องเปลี่ยนรหัส</span>';
+    return `
+      <tr>
+        <td><strong>${esc(u.username)}</strong></td>
+        <td>${esc(u.role)}</td>
+        <td>${status}</td>
+        <td class="muted small">${u.created_at ? new Date(u.created_at).toLocaleDateString('th-TH') : ''}</td>
+        <td class="muted small">${u.updated_at ? new Date(u.updated_at).toLocaleDateString('th-TH') : ''}</td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="btn" style="padding:4px 10px;font-size:12px" data-act="reset" data-user="${esc(u.username)}">รีเซ็ตรหัส</button>
+          <button class="btn danger" style="padding:4px 10px;font-size:12px" data-act="delete" data-user="${esc(u.username)}" ${u.username === AUTH.username ? 'disabled title="ลบตัวเองไม่ได้"' : ''}>ลบ</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function bindUsers() {
+  Q('#btn-add-user').addEventListener('click', openAddUserModal);
+  Q('#users-tbody').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    const username = btn.dataset.user;
+    if (btn.dataset.act === 'reset') await doResetUserPassword(username);
+    else if (btn.dataset.act === 'delete') await doDeleteUser(username);
+  });
+}
+
+function openAddUserModal() {
+  const body = `
+    <div class="field">
+      <label>ชื่อผู้ใช้</label>
+      <input id="new-user-username" placeholder="เช่น somchai">
+    </div>
+    <div class="field">
+      <label>สิทธิ์</label>
+      <select id="new-user-role">
+        <option value="Staff">Staff (แก้ไขข้อมูล CRM)</option>
+        <option value="Admin">Admin (จัดการผู้ใช้ได้ด้วย)</option>
+      </select>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px">ระบบจะสุ่มรหัสผ่านชั่วคราวให้ — ผู้ใช้ต้องเปลี่ยนรหัสผ่านตอน login ครั้งแรก</div>
+  `;
+  const footer = `
+    <button class="btn" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn primary" onclick="doCreateUser()">เพิ่มผู้ใช้</button>
+  `;
+  openModal('เพิ่มผู้ใช้ใหม่', body, footer);
+}
+
+async function doCreateUser() {
+  const username = (Q('#new-user-username').value || '').trim();
+  const role = Q('#new-user-role').value;
+  if (!username) { toast('กรุณากรอกชื่อผู้ใช้', 'error'); return; }
+  const r = await apiPost('adminCreateUser', { username, role });
+  if (r && r.error) { toast(r.error, 'error'); return; }
+  closeModal();
+  toast(`เพิ่มผู้ใช้ ${username} สำเร็จ`, 'success');
+  showTempPasswordModal(r.username, r.temp_password, 'สร้างผู้ใช้สำเร็จ');
+  renderUsers();
+}
+
+async function doResetUserPassword(username) {
+  if (!confirm(`รีเซ็ตรหัสผ่านของ ${username}? รหัสผ่านเดิมจะใช้ไม่ได้ทันที`)) return;
+  const r = await apiPost('adminResetPassword', { username });
+  if (r && r.error) { toast(r.error, 'error'); return; }
+  showTempPasswordModal(r.username, r.temp_password, 'รีเซ็ตรหัสผ่านสำเร็จ');
+  renderUsers();
+}
+
+async function doDeleteUser(username) {
+  if (!confirm(`ลบผู้ใช้ ${username}? การกระทำนี้ย้อนกลับไม่ได้`)) return;
+  const r = await apiPost('adminDeleteUser', { username });
+  if (r && r.error) { toast(r.error, 'error'); return; }
+  toast(`ลบผู้ใช้ ${username} แล้ว`, 'success');
+  renderUsers();
+}
+
+function showTempPasswordModal(username, tempPassword, title) {
+  const body = `
+    <div style="text-align:center;padding:10px 0">
+      <div class="muted" style="margin-bottom:8px">ชื่อผู้ใช้</div>
+      <div style="font-size:18px;font-weight:700;margin-bottom:16px">${esc(username)}</div>
+      <div class="muted" style="margin-bottom:8px">รหัสผ่านชั่วคราว</div>
+      <div style="font-size:22px;font-weight:700;font-family:monospace;background:var(--surface-2);border-radius:8px;padding:12px;letter-spacing:1px">${esc(tempPassword)}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:16px">⚠️ คัดลอกรหัสผ่านนี้ไปให้เจ้าของบัญชีทันที — ระบบจะไม่แสดงซ้ำอีก ผู้ใช้ต้องเปลี่ยนรหัสผ่านตอน login ครั้งแรก</div>
+    </div>
+  `;
+  const footer = `<button class="btn primary" onclick="closeModal()">รับทราบ ปิดหน้าต่างนี้</button>`;
+  openModal(title, body, footer);
+}
+
 // Settings modal
 function openSyncSettings() {
   const curUrl = STORE.syncUrl || '';
@@ -3510,6 +3644,9 @@ function initSidebar() {
     { page:'groups', label:'เครือบริษัท', ico:ICO.building, section:'ข้อมูลเพิ่มเติม' },
     { page:'churned', label:'ลูกค้าหลุด', ico:ICO.heart, section:'ข้อมูลเพิ่มเติม' },
   ];
+  if (AUTH.role === 'Admin') {
+    items.push({ page:'users', label:'จัดการผู้ใช้', ico:ICO.users, section:'ผู้ดูแลระบบ' });
+  }
   const sections = {};
   items.forEach(i => (sections[i.section] = sections[i.section] || []).push(i));
   Q('#nav').innerHTML = Object.entries(sections).map(([s, list]) => `
@@ -3621,6 +3758,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 window.openModal = openModal; window.closeModal = closeModal;
+window.doCreateUser = doCreateUser;
 window.openCustomerModal = openCustomerModal; window.saveCustomer = saveCustomer; window.deleteAddedCustomer = deleteAddedCustomer; window.deleteCustomer = deleteCustomer;
 window.openCustomerDetail = openCustomerDetail;
 window.openServiceFromDetail = openServiceFromDetail; window.openCustomerEditFromDetail = openCustomerEditFromDetail; window.openFollowupFromDetail = openFollowupFromDetail; window.addServiceFromDetail = addServiceFromDetail; window.deleteCustomerFromDetail = deleteCustomerFromDetail;
