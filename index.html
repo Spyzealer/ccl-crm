@@ -1081,12 +1081,20 @@ const fmtShort = (n) => { if (!n) return '0'; if (n >= 1e6) return (n/1e6).toFix
 const uid = () => 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
 // ============================================================
-// DEFAULT SYNC URL — baked into the shipped HTML so anyone who opens this
-// file can sync without manual configuration. Users can still override
-// via ⚙️ Sync Settings (their value takes precedence).
-// To disable the bundled URL, change to an empty string.
+// DEFAULT SYNC URL — environment-aware so testing never writes into the
+// real production Google Sheet by accident.
+//   - Production host (ccl-crm.netlify.app / custom domain) → real sheet.
+//   - Any other host (Netlify branch deploys, PR deploy previews,
+//     localhost, file://) → no default sync URL, app runs local-only.
+// Users can still override via ⚙️ Sync Settings on any environment
+// (their value always takes precedence — see init()).
+// ponytail: SYNC_URL_STAGING left blank until a staging Sheet + Apps
+// Script deployment exists; add its URL here once you make one.
 // ============================================================
-const DEFAULT_SYNC_URL = 'https://script.google.com/macros/s/AKfycbwpzOCw3sq5-iIW3Cm3PjXcfq4s2dQ_dd9xAlKWkGTbsuD6tbqWKnJIMwfEL2CkbXd14Q/exec';
+const PROD_HOSTNAMES = ['ccl-crm.netlify.app'];
+const SYNC_URL_PROD = 'https://script.google.com/macros/s/AKfycbwpzOCw3sq5-iIW3Cm3PjXcfq4s2dQ_dd9xAlKWkGTbsuD6tbqWKnJIMwfEL2CkbXd14Q/exec';
+const SYNC_URL_STAGING = '';
+const DEFAULT_SYNC_URL = PROD_HOSTNAMES.includes(location.hostname) ? SYNC_URL_PROD : SYNC_URL_STAGING;
 
 // TODAY = actual current date in Bangkok timezone (YYYY-MM-DD).
 // Used by daysLeft, statusOf, default form dates, and Active/Expired classification.
