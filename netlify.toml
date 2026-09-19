@@ -1,5 +1,9 @@
 [build]
   publish = "."
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
 
 ## Uncomment to use this redirect for Single Page Applications like create-react-app.
 ## Not needed for static site generators.

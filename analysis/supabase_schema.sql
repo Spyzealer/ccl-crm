@@ -206,3 +206,22 @@ create trigger trg_followups_touch before update on public.followups
 drop trigger if exists trg_churned_touch on public.churned_customers;
 create trigger trg_churned_touch before update on public.churned_customers
   for each row execute function public.touch_updated_at();
+
+-- ------------------------------------------------------------
+-- 9. Grants (RLS still applies on top of these — RLS restricts rows,
+--    these GRANTs are the baseline table-level permission Postgres
+--    requires before RLS is even evaluated)
+-- ------------------------------------------------------------
+grant usage on schema public to anon, authenticated, service_role;
+
+grant select, insert, update, delete on public.profiles to authenticated, service_role;
+grant select, insert, update, delete on public.customers to authenticated, service_role;
+grant select, insert, update, delete on public.services to authenticated, service_role;
+grant select, insert, update, delete on public.followups to authenticated, service_role;
+grant select, insert, update, delete on public.churned_customers to authenticated, service_role;
+
+grant select on public.profiles to anon;
+grant select on public.customers to anon;
+grant select on public.services to anon;
+grant select on public.followups to anon;
+grant select on public.churned_customers to anon;
