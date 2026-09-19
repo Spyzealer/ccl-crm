@@ -1,0 +1,9 @@
+{
+  "name": "ccl-crm-functions",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Netlify Functions backend for CCL CRM (Supabase-backed)",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  }
+}

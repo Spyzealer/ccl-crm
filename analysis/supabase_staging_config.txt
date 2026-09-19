@@ -1,0 +1,13 @@
+# Supabase Staging — Connection Info
+# This file is safe to commit: contains only public/publishable values.
+# The DB password and secret key are kept OUT of this repo (see .secrets_staging.txt, gitignored).
+
+SUPABASE_PROJECT_REF=htzcwhlwshmodsrmedin
+SUPABASE_URL=https://htzcwhlwshmodsrmedin.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_szb8_JHj5vevUrp6xuqgng_tebBCiYE
+SUPABASE_REGION=ap-southeast-1 (Singapore)
+SUPABASE_ORG=CCL (Free plan)
+
+# Secret key (sb_secret_...) is NOT stored here — never expose it in frontend code.
+# If ever needed server-side (e.g. Netlify Function, migration script), fetch it fresh
+# from: https://supabase.com/dashboard/project/htzcwhlwshmodsrmedin/settings/api-keys
