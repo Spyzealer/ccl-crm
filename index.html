@@ -840,9 +840,23 @@ td.actions { text-align: right; white-space: nowrap; }
   }
   .sidebar.open { transform: translateX(0); box-shadow: var(--shadow-lg); }
   .mobile-menu { display: grid; }
-  .topbar { padding: 0 14px; }
+  .topbar { padding: 0 12px; gap: 6px; flex-wrap: wrap; }
+  .topbar .today-chip,
+  .topbar #sync-pill,
+  .topbar #cmd-open,
+  .topbar #theme-toggle,
+  .topbar #btn-tweaks { display: none; }
+  .topbar .breadcrumb .cur { max-width: 90px; }
+  .topbar .today-chip { padding: 4px 8px; font-size: 11px; }
   .page-body { padding: 16px; }
   .sb-collapse-btn { display: none !important; }
+}
+
+@media (max-width: 480px) {
+  .topbar { padding: 0 10px; gap: 4px; }
+  .topbar .breadcrumb .cur { max-width: 70px; }
+  .topbar .tb-icon-btn { width: 32px; height: 32px; }
+  .topbar .tb-icon-btn svg { width: 14px; height: 14px; }
 }
 
 /* Scrollbar */
