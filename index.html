@@ -3778,12 +3778,15 @@ function init() {
   if (STORE.syncUrl && (STORE.syncQueue || []).length > 0) {
     setTimeout(() => syncDrain(), 500);
   }
-  // First-time auto-pull: bring cloud data down so a new visitor sees up-to-date info immediately
-  if (firstSyncSetup) {
+  // Auto-pull on every load: always bring cloud data down first so anyone
+  // opening the app sees the latest data immediately, not stale localStorage.
+  // Skips silently if there are queued offline edits (syncDrain above will
+  // push those first; syncRefresh(true) itself also re-checks the queue).
+  if (STORE.syncUrl) {
     setTimeout(() => {
-      toast('🌐 ซิงค์ออนไลน์เปิดอัตโนมัติ · กำลังดึงข้อมูลล่าสุด...', 'success');
+      if (firstSyncSetup) toast('🌐 ซิงค์ออนไลน์เปิดอัตโนมัติ · กำลังดึงข้อมูลล่าสุด...', 'success');
       syncRefresh(true);
-    }, 600);
+    }, firstSyncSetup ? 600 : 700);
   }
 }
 
