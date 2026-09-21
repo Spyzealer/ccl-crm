@@ -3347,6 +3347,8 @@ async function renderUsers() {
   if (r && r.error) { tbody.innerHTML = `<tr><td colspan="6" style="padding:20px;color:#C62828">${esc(r.error)}</td></tr>`; return; }
   USERS_CACHE = (r && r.users) || [];
   renderUsersTable();
+  const usersCountEl = Q('.nav-item[data-page="users"] .count');
+  if (usersCountEl) usersCountEl.textContent = fmt(USERS_CACHE.length);
 }
 
 function renderUsersTable() {
