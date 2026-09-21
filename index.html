@@ -1024,6 +1024,8 @@ td.actions { text-align: right; white-space: nowrap; }
           </div>
           <div class="chart-box tall"><canvas id="chart-top10"></canvas></div>
         </div>
+
+        <div class="card" id="risk-month-card" style="margin-bottom:16px"></div>
       </section>
 
       <section class="page page-hidden" id="page-customers" data-screen-label="Customers"></section>
@@ -1544,6 +1546,43 @@ function renderDashboard() {
       </div>
     </div>`;
   }).join('') || `<div class="empty"><div class="ttl">ไม่มีรายการเร่งด่วน 🎉</div><div>ทุกบริการอยู่ในสถานะปกติ</div></div>`;
+
+  // Revenue at risk this month + next month
+  (function renderRiskMonth() {
+    const el = Q('#risk-month-card');
+    if (!el) return;
+    const now = new Date();
+    const thisKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    const nextD = new Date(now.getFullYear(), now.getMonth()+1, 1);
+    const nextKey = `${nextD.getFullYear()}-${String(nextD.getMonth()+1).padStart(2,'0')}`;
+    const idxThis = kpi.timeline.labels.indexOf(thisKey);
+    const idxNext = kpi.timeline.labels.indexOf(nextKey);
+    const thisRev = idxThis >= 0 ? kpi.timeline.revenue[idxThis] : 0;
+    const thisCnt = idxThis >= 0 ? kpi.timeline.counts[idxThis] : 0;
+    const nextRev = idxNext >= 0 ? kpi.timeline.revenue[idxNext] : 0;
+    const nextCnt = idxNext >= 0 ? kpi.timeline.counts[idxNext] : 0;
+    const monthLabels = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    const thisLabel = monthLabels[now.getMonth()];
+    const nextLabel = monthLabels[nextD.getMonth()];
+    el.innerHTML = `
+      <div class="card-head">
+        <div class="kpi-ico" style="background:var(--danger-bg);color:var(--danger)">${ICO.alert}</div>
+        <h3>รายได้เสี่ยงหาย — เดือนนี้ &amp; เดือนหน้า</h3>
+        <div class="sub">บริการที่หมดอายุตามกำหนด ยังไม่ต่อ</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:4px 2px">
+        <div style="border:1px solid var(--danger);border-radius:var(--r-lg);padding:14px;background:var(--danger-bg)">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">⚠️ ${esc(thisLabel)} (เดือนนี้)</div>
+          <div style="font-size:24px;font-weight:700;color:var(--danger)">${fmt(thisRev)}<span style="font-size:13px;font-weight:500;margin-left:4px">฿</span></div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">${thisCnt} บริการ — ต้องต่ออายุด่วน</div>
+        </div>
+        <div style="border:1px solid var(--warning);border-radius:var(--r-lg);padding:14px;background:var(--warning-bg)">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">${esc(nextLabel)} (เดือนหน้า)</div>
+          <div style="font-size:24px;font-weight:700;color:var(--warning)">${fmt(nextRev)}<span style="font-size:13px;font-weight:500;margin-left:4px">฿</span></div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">${nextCnt} บริการ — เตรียมติดตาม</div>
+        </div>
+      </div>`;
+  })();
 
   // Update sidebar counts
   updateSidebarCounts(kpi);
