@@ -3361,7 +3361,12 @@ function renderUsersTable() {
     return `
       <tr>
         <td><strong>${esc(u.username)}</strong></td>
-        <td>${esc(u.role)}</td>
+        <td>
+          <select class="role-select" data-user="${esc(u.username)}" style="padding:4px 6px;font-size:12px;border-radius:6px" ${u.username === AUTH.username ? 'disabled title="เปลี่ยนสิทธิ์ตัวเองไม่ได้"' : ''}>
+            <option value="Staff" ${u.role === 'Staff' ? 'selected' : ''}>Staff</option>
+            <option value="Admin" ${u.role === 'Admin' ? 'selected' : ''}>Admin</option>
+          </select>
+        </td>
         <td>${status}</td>
         <td class="muted small">${u.created_at ? new Date(u.created_at).toLocaleDateString('th-TH') : ''}</td>
         <td class="muted small">${u.updated_at ? new Date(u.updated_at).toLocaleDateString('th-TH') : ''}</td>
@@ -3382,6 +3387,11 @@ function bindUsers() {
     const username = btn.dataset.user;
     if (btn.dataset.act === 'reset') await doResetUserPassword(username);
     else if (btn.dataset.act === 'delete') await doDeleteUser(username);
+  });
+  Q('#users-tbody').addEventListener('change', async (e) => {
+    const sel = e.target.closest('select.role-select');
+    if (!sel) return;
+    await doUpdateUserRole(sel.dataset.user, sel.value);
   });
 }
 
@@ -3432,6 +3442,14 @@ async function doDeleteUser(username) {
   const r = await apiPost('adminDeleteUser', { username });
   if (r && r.error) { toast(r.error, 'error'); return; }
   toast(`ลบผู้ใช้ ${username} แล้ว`, 'success');
+  renderUsers();
+}
+
+async function doUpdateUserRole(username, role) {
+  if (!confirm(`เปลี่ยนสิทธิ์ของ ${username} เป็น ${role}?`)) { renderUsers(); return; }
+  const r = await apiPost('adminUpdateRole', { username, role });
+  if (r && r.error) { toast(r.error, 'error'); renderUsers(); return; }
+  toast(`เปลี่ยนสิทธิ์ของ ${username} เป็น ${role} แล้ว`, 'success');
   renderUsers();
 }
 
@@ -3745,6 +3763,14 @@ function init() {
     saveStore();
     firstSyncSetup = true;
   }
+  // Force-clear stale/legacy sync URLs (e.g. old Apps Script endpoints from
+  // before the Supabase migration) that may still be cached in a returning
+  // visitor's localStorage — those don't understand the current login/auth
+  // actions and silently break login with "unknown action" errors.
+  if (DEFAULT_SYNC_URL && STORE.syncUrl && STORE.syncUrl !== DEFAULT_SYNC_URL && /script\.google\.com/.test(STORE.syncUrl)) {
+    STORE.syncUrl = DEFAULT_SYNC_URL;
+    saveStore();
+  }
   // Initial sync status + drain any queued offline edits
   updateSyncStatus();
   if (STORE.syncUrl && (STORE.syncQueue || []).length > 0) {
@@ -3763,6 +3789,11 @@ window.addEventListener('DOMContentLoaded', () => {
   wireAuthUI_();
   // Apply bundled DEFAULT_SYNC_URL early so login can reach the backend on first run
   if (!STORE.syncUrl && DEFAULT_SYNC_URL) { STORE.syncUrl = DEFAULT_SYNC_URL; saveStore(); }
+  // Force-clear stale/legacy Apps Script sync URLs before login is attempted —
+  // otherwise a returning visitor's cached old backend URL breaks login silently.
+  if (DEFAULT_SYNC_URL && STORE.syncUrl && STORE.syncUrl !== DEFAULT_SYNC_URL && /script\.google\.com/.test(STORE.syncUrl)) {
+    STORE.syncUrl = DEFAULT_SYNC_URL; saveStore();
+  }
   if (isAuthValid_()) {
     hideLoginGate_();
     init();

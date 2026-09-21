@@ -236,6 +236,24 @@ async function handleAdminDeleteUser(auth, payload) {
   return { ok: true };
 }
 
+// ---- Admin: change a user's role (Admin only) --------------------------
+
+async function handleAdminUpdateRole(auth, payload) {
+  if (auth.role !== 'Admin') return { error: 'ต้องเป็น Admin เท่านั้น' };
+  const { username, role } = payload || {};
+  if (!username) return { error: 'กรุณาระบุชื่อผู้ใช้' };
+  if (role !== 'Admin' && role !== 'Staff') return { error: 'สิทธิ์ไม่ถูกต้อง' };
+  if (username === auth.username && role !== 'Admin') {
+    return { error: 'ไม่สามารถลดสิทธิ์ตัวเองได้ ให้ Admin คนอื่นเปลี่ยนแทน' };
+  }
+  const admin = adminClient();
+  const { data: profile } = await admin.from('profiles').select('id').eq('username', username).single();
+  if (!profile) return { error: 'ไม่พบผู้ใช้นี้' };
+  const { error } = await admin.from('profiles').update({ role, updated_at: new Date().toISOString() }).eq('id', profile.id);
+  if (error) return { error: error.message };
+  return { ok: true };
+}
+
 // ---- Router -------------------------------------------------------------
 
 const ACTIONS = {
@@ -252,6 +270,7 @@ const ACTIONS = {
   adminCreateUser: (auth, p) => handleAdminCreateUser(auth, p),
   adminResetPassword: (auth, p) => handleAdminResetPassword(auth, p),
   adminDeleteUser: (auth, p) => handleAdminDeleteUser(auth, p),
+  adminUpdateRole: (auth, p) => handleAdminUpdateRole(auth, p),
 };
 
 exports.handler = async (event) => {
