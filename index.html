@@ -382,6 +382,13 @@ textarea { resize: vertical; min-height: 80px; font-family: inherit; }
 .kpi-trend.down { background: var(--danger-bg); color: var(--danger); }
 .kpi-trend.flat { background: var(--surface-3); color: var(--muted); }
 .kpi-trend svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.kpi-card.kpi-urgent { border-color: var(--danger); border-width: 1.5px; box-shadow: 0 0 0 1px var(--danger-bg); }
+.kpi-card.kpi-urgent .kpi-val { color: var(--danger); }
+@media (max-width: 720px) {
+  #kpi-grid { grid-template-columns: 1fr 1fr; }
+  #kpi-grid .kpi-card.kpi-urgent { grid-column: 1 / -1; order: -2; }
+  #kpi-grid .kpi-card.acc-orange { order: -1; }
+}
 
 /* Dashboard layout */
 .dash-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: var(--gap); margin-bottom: var(--gap); }
@@ -956,7 +963,7 @@ td.actions { text-align: right; white-space: nowrap; }
       <span class="today-chip" id="sync-pill" title="สถานะการซิงค์">📴 Local</span>
       <span class="today-chip" id="whoami-chip" title="ผู้ใช้ปัจจุบัน" style="cursor:default;"></span>
       <button class="tb-icon-btn" id="btn-logout" title="ออกจากระบบ"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
-      <button class="tb-icon-btn" id="btn-refresh" title="🔄 ดึงข้อมูลล่าสุดจาก Google Sheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
+      <button class="tb-icon-btn" id="btn-refresh" title="🔄 ดึงข้อมูลล่าสุดจาก Supabase"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
       <button class="tb-icon-btn" id="btn-sync" title="⚙️ ตั้งค่าการซิงค์ออนไลน์"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></button>
       <button class="tb-icon-btn" id="cmd-open" title="ค้นหา (Ctrl+K)"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
       <button class="tb-icon-btn" id="theme-toggle" title="Theme"></button>
@@ -1398,16 +1405,16 @@ function renderDashboard() {
   };
 
   const cards = [
-    { lbl:'รายได้ต่อปี (Active)', val:fmtRev(kpi.active_revenue), unit:'฿', ico:ICO.money, acc:'green', foot:`${kpi.active_services} บริการ · ${kpi.active_customers} ลูกค้า`, trend:{dir:'up',label:'ต่อเนื่อง'} },
-    { lbl:'หมดอายุแล้ว', val:kpi.expired, ico:ICO.alert, acc:'red', foot:`ต้องต่อ/ปิดการขายด่วน`, trend: null },
+    { lbl:'หมดอายุแล้ว', val:kpi.expired, ico:ICO.alert, acc:'red', foot:`ต้องต่อ/ปิดการขายด่วน`, trend: null, urgent:true },
     { lbl:'ใกล้หมด ≤30 วัน', val:kpi.critical_30, ico:ICO.clock, acc:'orange', foot:`วิกฤต — โทรด่วน`, trend: null },
+    { lbl:'รายได้ต่อปี (Active)', val:fmtRev(kpi.active_revenue), unit:'฿', ico:ICO.money, acc:'green', foot:`${kpi.active_services} บริการ · ${kpi.active_customers} ลูกค้า`, trend:{dir:'up',label:'ต่อเนื่อง'} },
     { lbl:'ต้องเตือน ≤60 วัน', val:kpi.warning_60 + kpi.prep_90, ico:ICO.calendar, acc:'blue', foot:`${kpi.warning_60} (≤60) + ${kpi.prep_90} (≤90)`, trend: null },
     { lbl:'ลูกค้าในระบบ', val:kpi.total_customers, ico:ICO.users, acc:'', foot:`${kpi.group_count} เครือบริษัท`, trend: null },
     { lbl:'รายได้ที่เสียไป', val:fmtRev(kpi.churned_revenue), unit:'฿', ico:ICO.heart, acc:'gray', foot:`${kpi.churned_count} ลูกค้าหลุด`, trend: null },
   ];
   Q('#kpi-grid').innerHTML = cards.map(c => {
     const trendHTML = c.trend ? `<span class="kpi-trend ${c.trend.dir}">${c.trend.dir === 'up' ? ICO.trendUp : c.trend.dir === 'down' ? ICO.trendDown : ''}${c.trend.label}</span>` : '';
-    return `<div class="kpi-card acc-${c.acc}">
+    return `<div class="kpi-card acc-${c.acc}${c.urgent ? ' kpi-urgent' : ''}">
       <div class="kpi-hd">
         <div class="kpi-ico">${c.ico}</div>
         <div class="kpi-lbl">${c.lbl}</div>
