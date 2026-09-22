@@ -472,7 +472,7 @@ textarea { resize: vertical; min-height: 80px; font-family: inherit; }
   gap: 8px;
   margin-bottom: 14px;
 }
-.cust-tab {
+.cust-tab, .svc-tab {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -488,22 +488,22 @@ textarea { resize: vertical; min-height: 80px; font-family: inherit; }
   color: var(--text);
   position: relative;
 }
-.cust-tab:hover { border-color: var(--border-strong); transform: translateY(-1px); }
-.cust-tab .ico { font-size: 16px; }
-.cust-tab .lbl { font-weight: 600; font-size: 13px; }
-.cust-tab .n {
+.cust-tab:hover, .svc-tab:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+.cust-tab .ico, .svc-tab .ico { font-size: 16px; }
+.cust-tab .lbl, .svc-tab .lbl { font-weight: 600; font-size: 13px; }
+.cust-tab .n, .svc-tab .n {
   position: absolute; top: 10px; right: 14px;
   font-weight: 700; font-size: 18px;
   color: var(--text-2);
 }
-.cust-tab .sub { font-size: 11px; color: var(--muted); line-height: 1.3; }
-.cust-tab.on {
+.cust-tab .sub, .svc-tab .sub { font-size: 11px; color: var(--muted); line-height: 1.3; }
+.cust-tab.on, .svc-tab.on {
   border-color: var(--brand-600);
   background: linear-gradient(135deg, var(--brand-50, rgba(37,99,235,.08)), transparent);
   box-shadow: 0 0 0 1px var(--brand-600) inset;
 }
-.cust-tab.on .n { color: var(--brand-600); }
-.cust-tab.on .lbl { color: var(--brand-600); }
+.cust-tab.on .n, .svc-tab.on .n { color: var(--brand-600); }
+.cust-tab.on .lbl, .svc-tab.on .lbl { color: var(--brand-600); }
 @media (max-width: 880px) {
   .cust-tabs { grid-template-columns: repeat(2, 1fr); }
 }
@@ -711,6 +711,10 @@ td.actions { text-align: right; white-space: nowrap; }
   .modal-body { padding: 14px 16px; }
   .modal-foot { padding: 12px 16px; flex-wrap: wrap; }
   .modal-foot button { flex: 1; min-height: 44px; }
+  /* iOS Safari auto-zooms the whole page when a focused input's
+     font-size is below 16px. Force 16px on every field inside modals
+     (and anywhere else on mobile) so tapping to edit doesn't zoom in. */
+  input, select, textarea { font-size: 16px !important; }
 }
 
 .field { margin-bottom: 14px; }
@@ -1247,7 +1251,20 @@ function mergedServices() {
   const added = STORE.addedServices.map(s => ({ ...s, _edited: false, _isNew: true }));
   return [...merged, ...added];
 }
-function enrichService(s) { const dl = daysLeft(s.expire); return { ...s, days_left: dl === null ? '' : dl, status: statusOf(s.expire) }; }
+function enrichService(s) {
+  const dl = daysLeft(s.expire);
+  const status = statusOf(s.expire);
+  // Service-level activity tier: separate from customer tier, threshold 60 days
+  // (a service becomes "history" much sooner than a whole customer archives)
+  const SERVICE_ARCHIVE_DAYS = 60;
+  let activityTier = 'active';
+  let daysSinceExpire = null;
+  if (status === 'Expired') {
+    daysSinceExpire = dl == null ? null : -dl; // dl is negative when past due
+    activityTier = (daysSinceExpire != null && daysSinceExpire > SERVICE_ARCHIVE_DAYS) ? 'archived' : 'expired';
+  }
+  return { ...s, days_left: dl === null ? '' : dl, status, activityTier, daysSinceExpire };
+}
 // How long (in days) since most recent expiry before a customer is considered "archived"
 const ARCHIVE_THRESHOLD_DAYS = 180;
 
@@ -1824,7 +1841,7 @@ function bindCustomers() {
 // SERVICES
 // ============================================================
 let svcSort = { key: 'expire', dir: 'asc' };
-let svcFilters = { q: '', status: '', type: '' };
+let svcFilters = { q: '', status: '', type: '', activityTab: 'active' };
 
 function renderServices() {
   const page = Q('#page-services');
@@ -1833,8 +1850,22 @@ function renderServices() {
   const sel = Q('#svc-type-filter');
   if (sel.options.length <= 1) sel.innerHTML = '<option value="">ประเภททั้งหมด</option>' + allTypes.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
 
+  const tab = svcFilters.activityTab;
+  const allEnriched = mergedServices().map(enrichService);
+
+  // Tab counts
+  const byTier = { active: 0, expired: 0, archived: 0 };
+  allEnriched.forEach(s => { byTier[s.activityTier] = (byTier[s.activityTier]||0) + 1; });
+  QQ('.svc-tab').forEach(t => {
+    const tk = t.dataset.tab;
+    const n = tk === 'all' ? allEnriched.length : (byTier[tk] || 0);
+    t.querySelector('.n').textContent = n;
+    t.classList.toggle('on', tk === tab);
+  });
+
   const q = svcFilters.q.toLowerCase().trim();
-  let rows = mergedServices().map(enrichService).filter(s => {
+  let rows = allEnriched.filter(s => {
+    if (tab !== 'all' && s.activityTier !== tab) return false;
     if (svcFilters.status && s.status !== svcFilters.status) return false;
     if (svcFilters.type && s.type !== svcFilters.type) return false;
     if (q) { const blob = (s.customer + ' ' + s.item + ' ' + (s.type||'') + ' ' + (s.note||'') + ' ' + (s.contact||'')).toLowerCase(); if (!blob.includes(q)) return false; }
@@ -1848,24 +1879,29 @@ function renderServices() {
   });
   Q('#svc-count').textContent = rows.length + ' รายการ';
 
-  // chip counts
-  const all = mergedServices().map(enrichService);
-  const byStatus = {}; all.forEach(s => byStatus[s.status] = (byStatus[s.status]||0)+1);
+  // status chip counts — only within current tab
+  const tabSet = allEnriched.filter(s => tab === 'all' || s.activityTier === tab);
+  const byStatus = {}; tabSet.forEach(s => byStatus[s.status] = (byStatus[s.status]||0)+1);
   QQ('.svc-chip').forEach(ch => {
     const st = ch.dataset.status;
-    ch.querySelector('.n').textContent = st === '' ? all.length : (byStatus[st] || 0);
+    ch.querySelector('.n').textContent = st === '' ? tabSet.length : (byStatus[st] || 0);
     ch.classList.toggle('on', st === svcFilters.status);
   });
 
-  Q('#svc-body').innerHTML = rows.map(s => `
-    <tr class="${rowClass(s.status)}">
-      <td class="strong"><div>${esc(s.customer)}${s._isNew?' <span class="badge new">ใหม่</span>':''}${s._edited?' <span class="badge edited">แก้</span>':''}</div>
+  Q('#svc-body').innerHTML = rows.map(s => {
+    const archBadge = s.activityTier === 'archived' ? ' <span class="badge archived">📦 ประวัติ</span>' : '';
+    const rowExtraClass = s.activityTier === 'archived' ? ' row-archived' : '';
+    return `
+    <tr class="${rowClass(s.status)}${rowExtraClass}">
+      <td class="strong"><div>${esc(s.customer)}${s._isNew?' <span class="badge new">ใหม่</span>':''}${s._edited?' <span class="badge edited">แก้</span>':''}${archBadge}</div>
         <div class="small muted">${esc(s.item)}</div></td>
       <td><span class="badge none mono" style="font-size:11px">${esc(s.type||'-')}</span></td>
       <td class="num">${s.qty != null ? fmt(s.qty) : '-'}</td>
       <td class="num strong">${fmtRev(s.price_year)}</td>
       <td>${esc(s.expire) || '<span class="muted">—</span>'}</td>
-      <td>${daysBadge(s.days_left, s.status)}</td>
+      <td>${s.activityTier === 'archived' && s.daysSinceExpire != null
+            ? `<span class="badge archived">หมดมา ${s.daysSinceExpire} วัน</span>`
+            : daysBadge(s.days_left, s.status)}</td>
       <td>${statusBadge(s.status)}</td>
       <td class="muted">
         ${s.contact ? esc(s.contact) : '<span class="muted">—</span>'}
@@ -1877,8 +1913,8 @@ function renderServices() {
         <button class="row-action" title="แก้ไข" onclick='openServiceModal(${JSON.stringify(s.id)})'>${ICO.edit}</button>
         <button class="row-action danger" title="ลบบริการ" onclick='deleteService(${JSON.stringify(s.id)})'>${ICO.trash}</button>
       </td>
-    </tr>
-  `).join('') || `<tr><td colspan="9"><div class="empty">${ICO.search}<div class="ttl">ไม่พบบริการ</div></div></td></tr>`;
+    </tr>`;
+  }).join('') || `<tr><td colspan="9"><div class="empty">${ICO.search}<div class="ttl">${tab === 'archived' ? 'ยังไม่มีบริการในประวัติ' : 'ไม่พบบริการ'}</div><div>${tab === 'archived' ? `บริการจะถูกย้ายมาที่นี่อัตโนมัติเมื่อหมดอายุเกิน ${60} วัน` : 'ลองปรับคำค้นหาหรือฟิลเตอร์'}</div></div></td></tr>`;
 }
 
 function servicesShell() {
@@ -1890,6 +1926,35 @@ function servicesShell() {
       <button class="tb-btn primary" onclick="openServiceModal()">${ICO.plus}เพิ่มบริการ</button>
     </div>
   </div>
+
+  <!-- PRIMARY TABS: activity tier (mirrors Customers page pattern) -->
+  <div class="cust-tabs" id="svc-tabs">
+    <button class="svc-tab on" data-tab="active">
+      <span class="ico">🟢</span>
+      <span class="lbl">ใช้งานอยู่</span>
+      <span class="n">0</span>
+      <span class="sub">ยังไม่หมดอายุ</span>
+    </button>
+    <button class="svc-tab" data-tab="expired">
+      <span class="ico">🟠</span>
+      <span class="lbl">หมดอายุแล้ว</span>
+      <span class="n">0</span>
+      <span class="sub">หมดไม่เกิน 60 วัน</span>
+    </button>
+    <button class="svc-tab" data-tab="archived">
+      <span class="ico">📦</span>
+      <span class="lbl">ประวัติ</span>
+      <span class="n">0</span>
+      <span class="sub">หมดเกิน 60 วัน — เคยใช้บริการ</span>
+    </button>
+    <button class="svc-tab" data-tab="all">
+      <span class="ico">📋</span>
+      <span class="lbl">ทั้งหมด</span>
+      <span class="n">0</span>
+      <span class="sub">รวมทุกบริการ</span>
+    </button>
+  </div>
+
   <div class="toolbar">
     <div class="search">${ICO.search}<input type="text" id="svc-search" placeholder="ค้นหาลูกค้า, บริการ, ประเภท..."></div>
     <select id="svc-type-filter"><option value="">ประเภททั้งหมด</option></select>
@@ -1922,6 +1987,7 @@ function bindServices() {
   Q('#svc-search').addEventListener('input', e => { svcFilters.q = e.target.value; renderServices(); });
   Q('#svc-type-filter').addEventListener('change', e => { svcFilters.type = e.target.value; renderServices(); });
   QQ('.svc-chip').forEach(ch => ch.addEventListener('click', () => { svcFilters.status = ch.dataset.status; renderServices(); }));
+  QQ('.svc-tab').forEach(t => t.addEventListener('click', () => { svcFilters.activityTab = t.dataset.tab; svcFilters.status = ''; renderServices(); }));
   QQ('#svc-table thead th[data-sort]').forEach(th => th.addEventListener('click', () => {
     const k = th.dataset.sort;
     if (svcSort.key === k) svcSort.dir = svcSort.dir === 'asc' ? 'desc' : 'asc';
