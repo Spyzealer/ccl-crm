@@ -700,21 +700,28 @@ td.actions { text-align: right; white-space: nowrap; }
 .modal-head .close { background: transparent; border: none; color: var(--muted); padding: 6px; border-radius: var(--r-sm); display: grid; place-items: center; }
 .modal-head .close:hover { background: var(--surface-3); color: var(--text); }
 .modal-head .close svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; }
-.modal-body { padding: 18px 22px; overflow-y: auto; }
+.modal-body { padding: 18px 22px; overflow-y: auto; overflow-x: hidden; min-width: 0; }
 .modal-foot { padding: 14px 22px; border-top: 1px solid var(--divider); display: flex; justify-content: flex-end; gap: 8px; }
 @media (max-width: 640px) {
   .modal-backdrop { padding: 0; align-items: flex-end; }
-  .modal { max-width: 100%; width: 100%; max-height: 92vh; border-radius: var(--r-xl) var(--r-xl) 0 0; }
+  .modal { max-width: 100%; width: 100%; max-height: 92vh; border-radius: var(--r-xl) var(--r-xl) 0 0; overflow-x: hidden; }
   .modal.wide { max-width: 100%; }
   .modal-head { padding: 14px 16px; }
   .modal-head .close { min-width: 40px; min-height: 40px; }
   .modal-body { padding: 14px 16px; }
   .modal-foot { padding: 12px 16px; flex-wrap: wrap; }
-  .modal-foot button { flex: 1; min-height: 44px; }
+  .modal-foot button { flex: 1 1 100%; min-height: 44px; }
   /* iOS Safari auto-zooms the whole page when a focused input's
      font-size is below 16px. Force 16px on every field inside modals
      (and anywhere else on mobile) so tapping to edit doesn't zoom in. */
   input, select, textarea { font-size: 16px !important; }
+  /* Customer/service detail view: force everything to a single narrow
+     column and let only the inner service table scroll horizontally
+     (via .svc-type-table's own overflow-x), never the whole modal. */
+  .cust-detail-stats { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .cust-detail-meta { gap: 4px; }
+  .cust-detail-meta .meta-chip { font-size: 11px; padding: 3px 8px; }
+  .cust-detail-alerts { gap: 4px; }
 }
 
 .field { margin-bottom: 14px; }
