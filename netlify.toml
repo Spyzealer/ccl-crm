@@ -11,3 +11,18 @@
 #  from = "/*"
 #  to = "/index.html"
 #  status = 200
+
+# Block internal/analysis files from being served publicly.
+# analysis/ contains real customer data (xlsx), DB schema and setup notes;
+# local-mock/ is the local test server. Neither belongs on the public CDN.
+[[redirects]]
+  from = "/analysis/*"
+  to = "/index.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/local-mock/*"
+  to = "/index.html"
+  status = 404
+  force = true

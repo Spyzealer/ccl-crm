@@ -993,7 +993,6 @@ td.actions { text-align: right; white-space: nowrap; }
       <span class="today-chip" id="whoami-chip" title="ผู้ใช้ปัจจุบัน" style="cursor:default;"></span>
       <button class="tb-icon-btn" id="btn-logout" title="ออกจากระบบ"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
       <button class="tb-icon-btn" id="btn-refresh" title="🔄 ดึงข้อมูลล่าสุดจาก Supabase"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
-      <button class="tb-icon-btn" id="btn-sync" title="⚙️ ตั้งค่าการซิงค์ออนไลน์"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></button>
       <button class="tb-icon-btn" id="cmd-open" title="ค้นหา (Ctrl+K)"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
       <button class="tb-icon-btn" id="theme-toggle" title="Theme"></button>
       <button class="tb-icon-btn" id="btn-tweaks" title="Tweaks"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
@@ -3076,8 +3075,6 @@ function buildCmdResults(q) {
     { type:'act', label:'Export JSON (Backup)', run: exportJSON, ico:ICO.download },
     { type:'act', label:'Import JSON', run: () => Q('#import-file').click(), ico:ICO.upload },
     { type:'act', label:'🔄 ดึงข้อมูลล่าสุด (Refresh)', run: () => syncRefresh(false), ico:ICO.download },
-    { type:'act', label:'⚙️ ตั้งค่าซิงค์ออนไลน์ (Sync Settings)', run: openSyncSettings, ico:ICO.settings },
-    { type:'act', label:'⬆️ อัปโหลดทั้งหมดไปคลาวด์', run: syncPushAll, ico:ICO.upload },
     { type:'act', label:'สลับ Theme (Light/Dark/Auto)', run: cycleTheme, ico:ICO.moon },
     { type:'act', label:'เปิด/ปิด Tweaks', run: () => Q('.tweaks-panel').classList.toggle('active'), ico:ICO.settings },
     { type:'act', label:'Reset ข้อมูลทั้งหมด', run: resetData, ico:ICO.trash },
@@ -3389,7 +3386,7 @@ function buildServiceRow(svcId) {
 
 // Manual "pull from cloud" — replaces BASE and clears local overlays
 async function syncRefresh(silent) {
-  if (!STORE.syncUrl) { openSyncSettings(); toast('ตั้งค่า URL ก่อน', 'error'); return; }
+  if (!STORE.syncUrl) { toast('ยังไม่ได้ตั้งค่าซิงค์', 'error'); return; }
   if (SYNC_STATE.pulling) return;
   if (!silent && ((STORE.syncQueue || []).length > 0)) {
     if (!confirm(`มี ${STORE.syncQueue.length} รายการยังไม่ถูกอัปโหลด — ดึงข้อมูลตอนนี้จะเสียการแก้ไขนั้น ดำเนินการต่อ?`)) return;
@@ -3606,156 +3603,6 @@ function showTempPasswordModal(username, tempPassword, title) {
   openModal(title, body, footer);
 }
 
-// Settings modal
-function openSyncSettings() {
-  const curUrl = STORE.syncUrl || '';
-  const curUser = STORE.syncUser || '';
-  const body = `
-    <div class="field">
-      <label>Google Apps Script Web App URL</label>
-      <input id="sync-url" value="${esc(curUrl)}" placeholder="https://script.google.com/macros/s/..../exec">
-      <div style="font-size:12px;color:var(--muted);margin-top:4px">วาง URL ที่ได้หลัง Deploy Apps Script (ดูขั้นตอนใน SETUP_GUIDE.md)</div>
-    </div>
-    <div class="field">
-      <label>ผู้ใช้ที่ login อยู่</label>
-      <input value="${esc(AUTH.username || '')}${AUTH.role ? ' (' + esc(AUTH.role) + ')' : ''}" disabled style="opacity:.7">
-      <div style="font-size:12px;color:var(--muted);margin-top:4px">ชื่อผู้ใช้ถูกกำหนดจากการ login ไม่สามารถแก้ไขที่นี่ได้ — ใช้ปุ่มออกจากระบบที่แถบด้านบนแทน</div>
-    </div>
-    <div class="field">
-      <div id="sync-test-result" style="font-size:13px;margin-top:8px"></div>
-    </div>
-    <div style="font-size:12px;color:var(--muted);margin-top:12px;padding:10px;background:var(--surface-2);border-radius:8px;border:1px solid var(--border)">
-      <strong>การใช้งาน:</strong><br>
-      • ทุกการแก้ไขจะซิงค์ไปที่ Google Sheet อัตโนมัติ<br>
-      • กดปุ่ม 🔄 Refresh เพื่อดึงข้อมูลล่าสุดจากเพื่อนในทีม<br>
-      • ถ้าอินเตอร์เน็ตขาด ระบบจะเก็บคิวและอัปโหลดเมื่อต่อเน็ตได้
-    </div>
-    <details style="margin-top:10px;font-size:12px">
-      <summary style="cursor:pointer;color:var(--accent);font-weight:600">⚠️ ซิงค์ไม่ได้? Checklist แก้ปัญหา</summary>
-      <div style="padding:10px 0 0;color:var(--muted);line-height:1.7">
-        <strong>1. URL ต้องลงท้ายด้วย <code>/exec</code></strong> (ไม่ใช่ /dev หรือลิงก์ editor)<br>
-        <strong>2. Apps Script ต้อง Deploy เป็น "Web app" + "Anyone" (ไม่ใช่ "Anyone with Google account")</strong><br>
-        <strong>3. ทุกครั้งที่แก้โค้ด Apps Script ต้องกด "Deploy → Manage deployments → Edit (✏️) → Version: New version"</strong> ไม่งั้นจะ serve โค้ดเก่าอยู่<br>
-        <strong>4. ใน Apps Script editor → Run setupSheets ครั้งแรก</strong> เพื่อสร้าง headers ทั้ง 4 sheets (Customers, Services, Followups, Churned)<br>
-        <strong>5. กด F12 → Console</strong> เพื่อดู error message แบบเต็ม
-      </div>
-    </details>
-  `;
-  const footer = `
-    <button class="btn" onclick="closeModal()">ยกเลิก</button>
-    <button class="btn" onclick="testSyncConnection()">🔌 ทดสอบการเชื่อมต่อ</button>
-    <button class="btn" onclick="syncPushAll()" ${curUrl ? '' : 'disabled'}>⬆️ อัปโหลดทั้งหมด</button>
-    <button class="btn primary" onclick="saveSyncSettings()">💾 บันทึกและดึงข้อมูล</button>
-  `;
-  openModal('⚙️ ตั้งค่าการซิงค์ออนไลน์', body, footer);
-}
-
-async function testSyncConnection() {
-  const url = (Q('#sync-url') || {}).value ? Q('#sync-url').value.trim() : '';
-  const out = Q('#sync-test-result');
-  if (!url) { if (out) out.innerHTML = '<span style="color:#C62828">❌ กรุณาใส่ URL ก่อน</span>'; return; }
-  if (out) out.innerHTML = '⏳ กำลังทดสอบ...';
-
-  // Quick URL sanity checks
-  if (!/^https:\/\/script\.google\.com\/.*\/exec(\?|$)/i.test(url) && !/^https:\/\/script\.googleusercontent\.com\/.*\/exec(\?|$)/i.test(url)) {
-    if (out) out.innerHTML = '<span style="color:#C62828">⚠️ URL ดูแปลก — ต้องลงท้ายด้วย <code>/exec</code> และมาจาก script.google.com<br><span class="muted small">ถ้าใช้ /dev หรือลิงก์จาก editor มันจะใช้ไม่ได้ — ต้อง Deploy แล้วใช้ "Web app URL"</span></span>';
-    return;
-  }
-
-  try {
-    const sep = url.includes('?') ? '&' : '?';
-    const res = await fetch(url + sep + 'action=ping', { method: 'GET', redirect: 'follow' });
-    console.log('[testSyncConnection] HTTP', res.status, res.statusText);
-
-    if (!res.ok) {
-      if (out) out.innerHTML = `<span style="color:#C62828">❌ HTTP ${res.status} ${res.statusText}<br><span class="muted small">ตรวจสอบว่า Deploy เป็น "Web app" + "Anyone" ใน Access</span></span>`;
-      return;
-    }
-
-    // Get raw text first so we can fall back if it isn't JSON
-    const raw = await res.text();
-    console.log('[testSyncConnection] raw response:', raw.slice(0, 500));
-
-    let data = null;
-    try { data = JSON.parse(raw); }
-    catch (jerr) {
-      // Common when Apps Script returns HTML login page (not deployed as Anyone)
-      const looksLikeHtml = raw.trim().startsWith('<');
-      if (out) out.innerHTML = `<span style="color:#C62828">❌ ${looksLikeHtml ? 'เซิร์ฟเวอร์ตอบเป็น HTML ไม่ใช่ JSON — ส่วนใหญ่แปลว่า Apps Script ไม่ได้ตั้ง Access = "Anyone"' : 'JSON parse error: ' + jerr.message}<br><span class="muted small">ดูใน Console (F12) จะเห็น raw response</span></span>`;
-      return;
-    }
-
-    // Accept a variety of success shapes:
-    //  - {ok: true, server_time}                 ← new ping handler
-    //  - {customers, services, ...}              ← old endpoint that defaults to load
-    //  - {success: true} or {status: 'ok'}       ← other variants
-    const isOk = data && (data.ok === true || data.success === true || data.status === 'ok' || Array.isArray(data.customers));
-
-    if (isOk) {
-      let serverLocal = data.server_time || '';
-      try {
-        if (data.server_time) {
-          const d = new Date(data.server_time);
-          if (!isNaN(d.getTime())) serverLocal = d.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'medium' });
-        }
-      } catch (e) {}
-      const counts = data.customers ? ` · ลูกค้า ${data.customers.length} · บริการ ${(data.services||[]).length}` : '';
-      const verNote = (!data.ok && !data.success && Array.isArray(data.customers))
-        ? '<br><span class="muted small">⚠️ Apps Script เป็นเวอร์ชันเก่า (ไม่มี ping handler) — ใช้ได้แต่ควร redeploy ใหม่ให้ตรงกับ apps_script.gs ล่าสุด</span>'
-        : '';
-      if (out) out.innerHTML = `<span style="color:#2E7D32">✅ เชื่อมต่อสำเร็จ${serverLocal ? ' · server time: ' + serverLocal : ''}${counts}</span>${verNote}`;
-      return;
-    }
-
-    // Got JSON but unrecognized shape — show what we got so user can debug
-    const keys = Object.keys(data || {});
-    const errMsg = data && data.error ? data.error : 'ไม่รู้จัก response shape';
-    if (out) out.innerHTML = `<span style="color:#C62828">❌ ${esc(errMsg)}<br><span class="muted small">Response keys: ${keys.length ? keys.join(', ') : '(ว่างเปล่า)'} · ดู F12 Console สำหรับรายละเอียด</span></span>`;
-  } catch (e) {
-    console.error('[testSyncConnection] fetch error:', e);
-    const msg = e.message || String(e);
-    let hint = '';
-    if (/failed to fetch|network/i.test(msg)) hint = '<br><span class="muted small">CORS หรือเครือข่ายมีปัญหา · ตรวจ URL และว่า Apps Script Deploy เป็น "Anyone" หรือยัง</span>';
-    if (out) out.innerHTML = '<span style="color:#C62828">❌ ' + esc(msg) + '</span>' + hint;
-  }
-}
-
-async function saveSyncSettings() {
-  const url = Q('#sync-url').value.trim();
-  STORE.syncUrl = url;
-  STORE.syncUser = AUTH.username || 'anonymous';
-  saveStore();
-  closeModal();
-  if (url) {
-    toast('บันทึกการตั้งค่าแล้ว · กำลังดึงข้อมูล...', 'success');
-    await syncRefresh(true);
-    toast('ซิงค์ออนไลน์เปิดใช้งานแล้ว', 'success');
-  } else {
-    updateSyncStatus();
-    toast('ปิดการซิงค์ออนไลน์', 'success');
-  }
-}
-
-// Push all current overlays as individual save operations (useful after initial setup)
-async function syncPushAll() {
-  if (!STORE.syncUrl) { toast('ตั้งค่า URL ก่อน', 'error'); return; }
-  if (!confirm('อัปโหลดข้อมูลปัจจุบันทั้งหมด (ลูกค้า, บริการ, ติดตาม) ไปยังคลาวด์?')) return;
-  closeModal();
-  toast('กำลังคิวการอัปโหลด...', 'success');
-  const cust = mergedCustomers();
-  cust.forEach(c => { const row = buildCustomerRow(c.customer); if (row) syncEnqueue('saveCustomer', row); });
-  const svc = mergedServices();
-  svc.forEach(s => { const row = buildServiceRow(s.id); if (row) syncEnqueue('saveService', row); });
-  STORE.followups.forEach(f => {
-    syncEnqueue('saveFollowup', {
-      id: String(f.id), customer: f.customer, date: f.date,
-      type: f.channel || '', note: f.note || '', owner: f.staff || '',
-      status: f.status || '',
-    });
-  });
-  toast(`คิวอัปโหลด ${(STORE.syncQueue || []).length} รายการ`, 'success');
-}
-
 // Update the sync pill in the topbar
 function updateSyncStatus() {
   const pill = document.getElementById('sync-pill');
@@ -3866,9 +3713,8 @@ function bindGlobalEvents() {
   Q('#btn-print').addEventListener('click', () => window.print());
   // Sync
   Q('#btn-refresh').addEventListener('click', () => syncRefresh(false));
-  Q('#btn-sync').addEventListener('click', openSyncSettings);
   Q('#sync-pill').addEventListener('click', () => {
-    if (!STORE.syncUrl) openSyncSettings();
+    if (!STORE.syncUrl) toast('ยังไม่ได้ตั้งค่าซิงค์', 'error');
     else if ((STORE.syncQueue || []).length > 0) syncDrain();
     else syncRefresh(false);
   });
@@ -3954,7 +3800,7 @@ window.openProductTypesModal = openProductTypesModal; window.renameProductType =
 window.openFollowupModal = openFollowupModal; window.saveFollowup = saveFollowup; window.deleteFollowup = deleteFollowup;
 window.fuFilters = fuFilters; window.renderFollowups = renderFollowups;
 window.openGroupModal = openGroupModal; window.saveGroup = saveGroup; window.deleteGroup = deleteGroup; window.removeMemberFromGroup = removeMemberFromGroup; window.toggleAllMembers = toggleAllMembers;
-window.openSyncSettings = openSyncSettings; window.syncRefresh = syncRefresh; window.syncPushAll = syncPushAll; window.testSyncConnection = testSyncConnection; window.saveSyncSettings = saveSyncSettings;
+window.syncRefresh = syncRefresh;
 
 </script>
 </body>
