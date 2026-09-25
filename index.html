@@ -1639,7 +1639,6 @@ function updateSidebarCounts(kpi) {
   setCnt('alerts', alertN);
   const alertItem = Q('.nav-item[data-page="alerts"]'); if (alertItem) alertItem.classList.toggle('alert', kpi.expired + kpi.critical_30 > 0);
   setCnt('followups', STORE.followups.length);
-  setCnt('groups', kpi.group_count);
   setCnt('churned', kpi.churned_count);
 }
 
@@ -1661,12 +1660,14 @@ function renderCustomers() {
   const st = custFilters.status;
   const tr = custFilters.tier;
   const tab = custFilters.activityTab;
+  const grp = custFilters.group;
   let rows = mergedCustomers().map(enrichCustomer).filter(c => {
     // PRIMARY filter: activity tier (the new tab system)
     if (tab !== 'all' && c.activityTier !== tab) return false;
     // Status sub-filter (within current tab)
     if (st && c.status !== st) return false;
     if (tr && (c.tier || 'Basic') !== tr) return false;
+    if (grp && (c.group_name || '') !== grp) return false;
     if (q) {
       const blob = (c.customer + ' ' + (c.group_name||'') + ' ' + (c.email||'') + ' ' + (c.contact||'') + ' ' + (c.group_id||'')).toLowerCase();
       if (!blob.includes(q)) return false;
@@ -1799,6 +1800,9 @@ function customersShell() {
       <option value="Bronze">Bronze</option>
       <option value="Basic">Basic</option>
     </select>
+    <select id="cust-group-filter">
+      <option value="">เครือทั้งหมด</option>
+    </select>
     <span class="count" id="cust-count">— ราย</span>
   </div>
   <div class="chips" style="margin-bottom:12px" id="cust-chips">
@@ -1828,6 +1832,7 @@ function customersShell() {
 function bindCustomers() {
   Q('#cust-search').addEventListener('input', e => { custFilters.q = e.target.value; renderCustomers(); });
   Q('#cust-tier-filter').addEventListener('change', e => { custFilters.tier = e.target.value; renderCustomers(); });
+  Q('#cust-group-filter').addEventListener('change', e => { custFilters.group = e.target.value; renderCustomers(); });
   QQ('.cust-tab').forEach(t => t.addEventListener('click', () => {
     custFilters.activityTab = t.dataset.tab;
     custFilters.status = '';  // reset status sub-filter when switching tabs
@@ -3062,7 +3067,6 @@ function buildCmdResults(q) {
     { type:'nav', label:'บริการ', page:'services', ico:ICO.tool },
     { type:'nav', label:'วันหมดอายุ', page:'alerts', ico:ICO.alert },
     { type:'nav', label:'การติดตาม', page:'followups', ico:ICO.note },
-    { type:'nav', label:'เครือบริษัท', page:'groups', ico:ICO.building },
     { type:'nav', label:'ลูกค้าหลุด', page:'churned', ico:ICO.heart },
   ];
   pages.forEach(p => { if (!q || p.label.toLowerCase().includes(q)) items.push(p); });
@@ -3660,7 +3664,6 @@ function initSidebar() {
     { page:'services', label:'บริการ', ico:ICO.tool, section:'หลัก' },
     { page:'alerts', label:'วันหมดอายุ', ico:ICO.alert, section:'งานเร่งด่วน' },
     { page:'followups', label:'การติดตาม', ico:ICO.note, section:'งานเร่งด่วน' },
-    { page:'groups', label:'เครือบริษัท', ico:ICO.building, section:'ข้อมูลเพิ่มเติม' },
     { page:'churned', label:'ลูกค้าหลุด', ico:ICO.heart, section:'งานเร่งด่วน' },
   ];
   if (AUTH.role === 'Admin') {
