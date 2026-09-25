@@ -6,3 +6,5 @@ __pycache__/
 *.pyc
 .secrets_staging.txt
 deno.lock
+.env
+.env.*
