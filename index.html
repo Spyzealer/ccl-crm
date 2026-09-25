@@ -1453,11 +1453,11 @@ function renderDashboard() {
     { lbl:'รายได้ต่อปี (Active)', val:fmtRev(kpi.active_revenue), unit:'฿', ico:ICO.money, acc:'green', foot:`${kpi.active_services} บริการ · ${kpi.active_customers} ลูกค้า`, trend:{dir:'up',label:'ต่อเนื่อง'} },
     { lbl:'ต้องเตือน ≤60 วัน', val:kpi.warning_60 + kpi.prep_90, ico:ICO.calendar, acc:'blue', foot:`${kpi.warning_60} (≤60) + ${kpi.prep_90} (≤90)`, trend: null },
     { lbl:'ลูกค้าในระบบ', val:kpi.total_customers, ico:ICO.users, acc:'', foot:`${kpi.group_count} เครือบริษัท`, trend: null },
-    { lbl:'รายได้ที่เสียไป', val:fmtRev(kpi.churned_revenue), unit:'฿', ico:ICO.heart, acc:'gray', foot:`${kpi.churned_count} ลูกค้าหลุด`, trend: null },
+    { lbl:'รายได้ที่เสียไป', val:fmtRev(kpi.churned_revenue), unit:'฿', ico:ICO.heart, acc:'gray', foot:`${kpi.churned_count} ลูกค้าหลุด`, trend: null, onClick:'churned' },
   ];
   Q('#kpi-grid').innerHTML = cards.map(c => {
     const trendHTML = c.trend ? `<span class="kpi-trend ${c.trend.dir}">${c.trend.dir === 'up' ? ICO.trendUp : c.trend.dir === 'down' ? ICO.trendDown : ''}${c.trend.label}</span>` : '';
-    return `<div class="kpi-card acc-${c.acc}${c.urgent ? ' kpi-urgent' : ''}">
+    return `<div class="kpi-card acc-${c.acc}${c.urgent ? ' kpi-urgent' : ''}${c.onClick ? ' kpi-clickable' : ''}"${c.onClick ? ` data-goto="${c.onClick}"` : ''}>
       <div class="kpi-hd">
         <div class="kpi-ico">${c.ico}</div>
         <div class="kpi-lbl">${c.lbl}</div>
@@ -1466,6 +1466,7 @@ function renderDashboard() {
       <div class="kpi-foot">${trendHTML}<span>${c.foot}</span></div>
     </div>`;
   }).join('');
+  QQ('#kpi-grid .kpi-card[data-goto]').forEach(el => el.addEventListener('click', () => setPage(el.dataset.goto)));
 
   // Destroy charts
   Object.values(charts).forEach(c => c && c.destroy());
@@ -3660,7 +3661,7 @@ function initSidebar() {
     { page:'alerts', label:'วันหมดอายุ', ico:ICO.alert, section:'งานเร่งด่วน' },
     { page:'followups', label:'การติดตาม', ico:ICO.note, section:'งานเร่งด่วน' },
     { page:'groups', label:'เครือบริษัท', ico:ICO.building, section:'ข้อมูลเพิ่มเติม' },
-    { page:'churned', label:'ลูกค้าหลุด', ico:ICO.heart, section:'ข้อมูลเพิ่มเติม' },
+    { page:'churned', label:'ลูกค้าหลุด', ico:ICO.heart, section:'งานเร่งด่วน' },
   ];
   if (AUTH.role === 'Admin') {
     items.push({ page:'users', label:'จัดการผู้ใช้', ico:ICO.users, section:'ผู้ดูแลระบบ' });
