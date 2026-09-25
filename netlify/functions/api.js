@@ -62,6 +62,35 @@ async function requireAuth(token) {
   return { user: data.user, token, username: profile?.username || toUsername(data.user.email), role: profile?.role || 'Staff' };
 }
 
+// ---- Simple in-memory rate limiting for login (per module instance) -----
+// Not perfect (resets on cold start, per-instance only) but blocks casual
+// brute-force attempts. Supabase Auth also has its own built-in rate limits
+// as a second layer.
+const LOGIN_ATTEMPTS = new Map(); // ip -> { count, firstAttempt }
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const RATE_LIMIT_MAX_ATTEMPTS = 5;
+
+function getClientIp(event) {
+  const xff = event.headers && (event.headers['x-forwarded-for'] || event.headers['X-Forwarded-For']);
+  if (xff) return xff.split(',')[0].trim();
+  return event.headers && (event.headers['client-ip'] || event.headers['x-nf-client-connection-ip']) || 'unknown';
+}
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const entry = LOGIN_ATTEMPTS.get(ip);
+  if (!entry || now - entry.firstAttempt > RATE_LIMIT_WINDOW_MS) {
+    LOGIN_ATTEMPTS.set(ip, { count: 1, firstAttempt: now });
+    return { limited: false };
+  }
+  if (entry.count >= RATE_LIMIT_MAX_ATTEMPTS) {
+    const retryAfterMs = RATE_LIMIT_WINDOW_MS - (now - entry.firstAttempt);
+    return { limited: true, retryAfterSec: Math.ceil(retryAfterMs / 1000) };
+  }
+  entry.count++;
+  return { limited: false };
+}
+
 async function handleLogin(payload) {
   const { username, password } = payload || {};
   if (!username || !password) return { error: 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน' };
@@ -299,6 +328,11 @@ exports.handler = async (event) => {
       const { action, payload, token } = body;
 
       if (action === 'login') {
+        const ip = getClientIp(event);
+        const rl = checkRateLimit(ip);
+        if (rl.limited) {
+          return json(429, { error: `พยายาม login ผิดบ่อยเกินไป กรุณารออีก ${rl.retryAfterSec} วินาที` });
+        }
         const result = await handleLogin(payload);
         return json(200, result);
       }
