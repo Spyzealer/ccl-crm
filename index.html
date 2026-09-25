@@ -552,6 +552,16 @@ table.data td {
 table.data tbody tr:hover { background: var(--surface-2); }
 table.data tbody tr:last-child td { border-bottom: none; }
 tr.row-expired { background: linear-gradient(90deg, var(--danger-bg) 0%, transparent 4%); }
+@media (max-width: 640px) {
+  #cust-table th.col-secondary, #cust-table td.col-secondary,
+  #svc-table th.col-secondary, #svc-table td.col-secondary { display: none; }
+  .table-wrap { position: relative; }
+  .table-wrap::after {
+    content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 18px;
+    background: linear-gradient(90deg, transparent, var(--surface));
+    pointer-events: none;
+  }
+}
 tr.row-critical { background: linear-gradient(90deg, var(--warning-bg) 0%, transparent 4%); }
 
 .row-action {
@@ -1818,12 +1828,12 @@ function customersShell() {
     <thead><tr>
       <th data-sort="customer">ลูกค้า</th>
       <th data-sort="tier">Tier</th>
-      <th data-sort="services">บริการ</th>
+      <th data-sort="services" class="col-secondary">บริการ</th>
       <th data-sort="revenue">฿/ปี</th>
       <th data-sort="next_expire">หมดถัดไป</th>
-      <th data-sort="days_left">คงเหลือ</th>
+      <th data-sort="days_left" class="col-secondary">คงเหลือ</th>
       <th data-sort="status">สถานะ</th>
-      <th data-sort="contact">ติดต่อ</th>
+      <th data-sort="contact" class="col-secondary">ติดต่อ</th>
       <th></th>
     </tr></thead>
     <tbody id="cust-body"></tbody>
