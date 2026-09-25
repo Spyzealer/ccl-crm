@@ -37,17 +37,18 @@ async function step(name, fn) {
 
   console.log('=== CCL CRM backend smoke test (against Supabase staging) ===\n');
 
-  // 1. Login as Nic (Admin) — password must be supplied via env, never hardcoded.
+  // 1. Login as an Admin account — username/password supplied via env, never hardcoded.
+  const adminUsername = process.env.SMOKE_TEST_ADMIN_USERNAME || 'nic';
   const adminPassword = process.env.SMOKE_TEST_ADMIN_PASSWORD;
   if (!adminPassword) {
-    console.error('Set SMOKE_TEST_ADMIN_PASSWORD env var (Nic\'s Supabase password) before running.');
+    console.error('Set SMOKE_TEST_ADMIN_PASSWORD (and optionally SMOKE_TEST_ADMIN_USERNAME) env var before running.');
     process.exit(1);
   }
 
-  const loginRes = await step('POST login (nic)', async () => {
+  const loginRes = await step(`POST login (${adminUsername})`, async () => {
     const res = await handler(makeEvent({
       method: 'POST',
-      body: { action: 'login', payload: { username: 'nic', password: adminPassword } },
+      body: { action: 'login', payload: { username: adminUsername, password: adminPassword } },
     }));
     return JSON.parse(res.body);
   });
