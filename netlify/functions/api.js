@@ -59,7 +59,7 @@ async function requireAuth(token) {
   if (error || !data || !data.user) return { error: 'auth_required', auth_required: true };
   const admin = adminClient();
   const { data: profile } = await admin.from('profiles').select('username, role').eq('id', data.user.id).single();
-  return { user: data.user, username: profile?.username || toUsername(data.user.email), role: profile?.role || 'Staff' };
+  return { user: data.user, token, username: profile?.username || toUsername(data.user.email), role: profile?.role || 'Staff' };
 }
 
 async function handleLogin(payload) {
@@ -104,13 +104,13 @@ async function handleLogout(auth) {
 
 // ---- CRM data: load / save / delete ----------------------------------
 
-async function handleLoad() {
-  const admin = adminClient();
+async function handleLoad(auth) {
+  const sb = userClient(auth.token);
   const [customers, services, followups, churned] = await Promise.all([
-    admin.from('customers').select('*'),
-    admin.from('services').select('*'),
-    admin.from('followups').select('*'),
-    admin.from('churned_customers').select('*'),
+    sb.from('customers').select('*'),
+    sb.from('services').select('*'),
+    sb.from('followups').select('*'),
+    sb.from('churned_customers').select('*'),
   ]);
   for (const r of [customers, services, followups, churned]) {
     if (r.error) return { error: r.error.message };
@@ -124,55 +124,55 @@ async function handleLoad() {
 }
 
 async function handleSaveCustomer(auth, payload) {
-  const admin = adminClient();
+  const sb = userClient(auth.token);
   const row = { ...payload, updated_by: auth.username, updated_at: new Date().toISOString() };
-  const { error } = await admin.from('customers').upsert(row, { onConflict: 'customer' });
+  const { error } = await sb.from('customers').upsert(row, { onConflict: 'customer' });
   if (error) return { error: error.message };
   return { ok: true };
 }
 
-async function handleDeleteCustomer(payload) {
-  const admin = adminClient();
-  const { error } = await admin.from('customers').delete().eq('customer', payload.customer);
+async function handleDeleteCustomer(auth, payload) {
+  const sb = userClient(auth.token);
+  const { error } = await sb.from('customers').delete().eq('customer', payload.customer);
   if (error) return { error: error.message };
   return { ok: true };
 }
 
 async function handleSaveService(auth, payload) {
-  const admin = adminClient();
+  const sb = userClient(auth.token);
   const row = { ...payload, updated_by: auth.username, updated_at: new Date().toISOString() };
-  const { error } = await admin.from('services').upsert(row, { onConflict: 'id' });
+  const { error } = await sb.from('services').upsert(row, { onConflict: 'id' });
   if (error) return { error: error.message };
   return { ok: true };
 }
 
-async function handleDeleteService(payload) {
-  const admin = adminClient();
-  const { error } = await admin.from('services').delete().eq('id', payload.id);
+async function handleDeleteService(auth, payload) {
+  const sb = userClient(auth.token);
+  const { error } = await sb.from('services').delete().eq('id', payload.id);
   if (error) return { error: error.message };
   return { ok: true };
 }
 
 async function handleSaveFollowup(auth, payload) {
-  const admin = adminClient();
+  const sb = userClient(auth.token);
   const row = { ...payload, updated_by: auth.username, updated_at: new Date().toISOString() };
-  const { error } = await admin.from('followups').upsert(row, { onConflict: 'id' });
+  const { error } = await sb.from('followups').upsert(row, { onConflict: 'id' });
   if (error) return { error: error.message };
   return { ok: true };
 }
 
-async function handleDeleteFollowup(payload) {
-  const admin = adminClient();
-  const { error } = await admin.from('followups').delete().eq('id', payload.id);
+async function handleDeleteFollowup(auth, payload) {
+  const sb = userClient(auth.token);
+  const { error } = await sb.from('followups').delete().eq('id', payload.id);
   if (error) return { error: error.message };
   return { ok: true };
 }
 
 async function handleRenameGroup(auth, payload) {
-  const admin = adminClient();
+  const sb = userClient(auth.token);
   const { newName, members } = payload || {};
   if (!members || !members.length) return { ok: true };
-  const { error } = await admin
+  const { error } = await sb
     .from('customers')
     .update({ group_name: newName || null, updated_by: auth.username, updated_at: new Date().toISOString() })
     .in('customer', members);
@@ -258,11 +258,11 @@ async function handleAdminUpdateRole(auth, payload) {
 
 const ACTIONS = {
   saveCustomer: (auth, p) => handleSaveCustomer(auth, p),
-  deleteCustomer: (auth, p) => handleDeleteCustomer(p),
+  deleteCustomer: (auth, p) => handleDeleteCustomer(auth, p),
   saveService: (auth, p) => handleSaveService(auth, p),
-  deleteService: (auth, p) => handleDeleteService(p),
+  deleteService: (auth, p) => handleDeleteService(auth, p),
   saveFollowup: (auth, p) => handleSaveFollowup(auth, p),
-  deleteFollowup: (auth, p) => handleDeleteFollowup(p),
+  deleteFollowup: (auth, p) => handleDeleteFollowup(auth, p),
   renameGroup: (auth, p) => handleRenameGroup(auth, p),
   changePassword: (auth, p) => handleChangePassword(auth, p),
   logout: (auth) => handleLogout(auth),
@@ -288,7 +288,7 @@ exports.handler = async (event) => {
       if (action === 'load') {
         const auth = await requireAuth(token);
         if (auth.error) return json(200, auth);
-        const result = await handleLoad();
+        const result = await handleLoad(auth);
         return json(200, result);
       }
       return json(400, { error: 'unknown GET action' });
