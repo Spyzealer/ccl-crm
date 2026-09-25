@@ -1666,6 +1666,15 @@ function renderCustomers() {
     page.dataset.ready = '1';
     bindCustomers();
   }
+  // Populate the group filter dropdown from actual data every render
+  // (cheap: only rebuilds <option> list, keeps current selection)
+  const grpSel = Q('#cust-group-filter');
+  if (grpSel) {
+    const allGroups = [...new Set(mergedCustomers().map(c => (c.group_name || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'th'));
+    const currentVal = grpSel.value;
+    grpSel.innerHTML = `<option value="">เครือทั้งหมด</option>` + allGroups.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
+    if (allGroups.includes(currentVal)) grpSel.value = currentVal;
+  }
   const q = custFilters.q.toLowerCase().trim();
   const st = custFilters.status;
   const tr = custFilters.tier;
